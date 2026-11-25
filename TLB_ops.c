@@ -14,14 +14,14 @@ static void fill_entry(TLBEntry *e, int page_num, int frame_num,
     e->last_used = g_clock;    /* base do LRU */
 }
 
-void update_tlb(TLBEntry tlb[], int page_num, int frame_num,
-                ReplacementAlg tlb_alg, unsigned long g_clock)
+int update_tlb(TLBEntry tlb[], int page_num, int frame_num,
+               ReplacementAlg tlb_alg, unsigned long g_clock)
 {
     /* 1) Alocacao: se existe slot livre, usa-o (nao precisa despejar ninguem). */
     for (int i = 0; i < TLB_SIZE; i++) {
         if (!tlb[i].valid) {
             fill_entry(&tlb[i], page_num, frame_num, g_clock);
-            return;
+            return i;
         }
     }
 
@@ -39,11 +39,12 @@ void update_tlb(TLBEntry tlb[], int page_num, int frame_num,
                                             last_used_times, TLB_SIZE);
     if (victim < 0) {
         fprintf(stderr, "Erro: nao foi possivel escolher vitima na TLB\n");
-        return;
+        return -1;
     }
 
-    /* 4) Substitui a vitima pela nova traducao. */
+    /* 4) Substitui a vitima pela nova traducao e devolve o indice usado. */
     fill_entry(&tlb[victim], page_num, frame_num, g_clock);
+    return victim;
 }
 
 void invalidate_tlb_page(TLBEntry tlb[], int page_num)

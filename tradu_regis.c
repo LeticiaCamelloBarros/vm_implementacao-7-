@@ -46,7 +46,9 @@ int translate_address(MemoryManager *mm, int virtual_address,
                 return 0;
         }
         /* 4) Registra a traducao na TLB para os proximos acessos. */
-        update_tlb(mm->tlb, page_num, frame_num, tlb_alg, *g_clock);
+        tlb_index = update_tlb(mm->tlb, page_num, frame_num, tlb_alg, *g_clock);
+        if (tlb_index < 0)
+            return 0;
     }
 
     /* Atualiza as marcas de uso (necessarias para o LRU da RAM). */
@@ -57,8 +59,9 @@ int translate_address(MemoryManager *mm, int virtual_address,
     int physical_address = frame_num * PAGE_SIZE + offset;
     int value = mm->physical_memory[physical_address];
 
-    fprintf(correct_fp, "Virtual address: %d Physical address: %d Value: %d\n",
-            virtual_address, physical_address, value);
+    fprintf(correct_fp,
+            "Virtual address: %d TLB: %d Physical address: %d Value: %d\n",
+            virtual_address, tlb_index, physical_address, value);
     return 1;
 }
 
