@@ -15,6 +15,6 @@ clean:
 	rm -f $(TARGET) *.o correct.txt evidencias.log
 
 run: $(TARGET)
-	./$(TARGET) address.txt lru fifo
+	./$(TARGET) addresses.txt lru fifo
 
 .PHONY: all clean run

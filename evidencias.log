@@ -1,0 +1,10 @@
+==== Simulador de Memoria Virtual - Evidencias ====
+Data/hora: 2026-11-24 23:05:23
+Arquivo de enderecos: addresses.txt
+Algoritmo de paginas: lru
+Algoritmo da TLB: fifo
+Enderecos lidos: 1000
+Page Faults: 539 (53.90%)
+TLB Hits: 54 (5.40%)
+===================================================
+
