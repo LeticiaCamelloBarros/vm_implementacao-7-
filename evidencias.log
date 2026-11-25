@@ -1,5 +1,5 @@
 ==== Simulador de Memoria Virtual - Evidencias ====
-Data/hora: 2026-11-24 23:05:23
+Data/hora: 2026-11-24 23:37:15
 Arquivo de enderecos: addresses.txt
 Algoritmo de paginas: lru
 Algoritmo da TLB: fifo
