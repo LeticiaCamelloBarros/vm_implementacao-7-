@@ -1,26 +1,45 @@
-#ifndef ALGO_H
-#define ALGO_H
+#include "algo.h"
 
-/* Politica de substituicao usada pela TLB (16 entradas) e pela RAM (128 quadros). */
-typedef enum {
-    ALG_FIFO,
-    ALG_LRU
-} ReplacementAlg;
+/* Funcoes puras: nao alteram os vetores nem usam variaveis globais,
+ * por isso o mesmo codigo serve para a TLB e para a RAM fisica. */
 
-/* FIFO: escolhe o indice com o MENOR arrival_time (entrou ha mais tempo).
- * Retorna -1 se size <= 0. Em empate, devolve o menor indice. */
-int select_victim_fifo(const unsigned long arrival_times[], int size);
+/* Procura o indice do menor valor do vetor (busca linear, O(n)). */
+static int index_of_min(const unsigned long times[], int size)
+{
+    int victim = 0;
 
-/* LRU: escolhe o indice com o MENOR last_used (usado ha mais tempo).
- * Retorna -1 se size <= 0. Em empate, devolve o menor indice. */
-int select_victim_lru(const unsigned long last_used_times[], int size);
+    for (int i = 1; i < size; i++) {
+        if (times[i] < times[victim])
+            victim = i;
+    }
+    return victim;
+}
 
-/* Despachante: chama FIFO ou LRU conforme 'alg'. Funciona para qualquer
- * tamanho de estrutura (TLB ou RAM), pois so recebe vetores de tempos.
- * Retorna -1 se 'alg' for invalido ou size <= 0. */
+int select_victim_fifo(const unsigned long arrival_times[], int size)
+{
+    if (size <= 0)
+        return -1;
+    return index_of_min(arrival_times, size); /* quem chegou primeiro */
+}
+
+int select_victim_lru(const unsigned long last_used_times[], int size)
+{
+    if (size <= 0)
+        return -1;
+    return index_of_min(last_used_times, size); /* quem ficou mais tempo sem uso */
+}
+
 int select_victim_by_algorithm(ReplacementAlg alg,
                                const unsigned long arrival_times[],
                                const unsigned long last_used_times[],
-                               int size);
-
-#endif /* ALGO_H */
+                               int size)
+{
+    switch (alg) {
+    case ALG_FIFO:
+        return select_victim_fifo(arrival_times, size);
+    case ALG_LRU:
+        return select_victim_lru(last_used_times, size);
+    default:
+        return -1;
+    }
+}
