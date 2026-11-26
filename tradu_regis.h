@@ -21,21 +21,14 @@ typedef struct {
     int tlb_hits;
 } MemoryManager;
 
-/* Traduz um endereco virtual (0 a 65535) e grava a linha em correct_fp:
- *   Virtual address: %d Physical address: %d Value: %d
+/* Traduz um endereco virtual (0 a 65535) e grava em 'out' (stdout) a linha:
+ *   Virtual address: %d TLB: %d Physical address: %d Value: %d
+ * "TLB" e o indice (0..15) da entrada da TLB usada (hit) ou preenchida (miss).
  * g_clock e o relogio logico global (incrementado a cada acesso).
  * Retorna 1 em sucesso, 0 em erro (mensagem em stderr). */
 int translate_address(MemoryManager *mm, int virtual_address,
                       ReplacementAlg page_alg, ReplacementAlg tlb_alg,
-                      FILE *backing_store, FILE *correct_fp,
+                      FILE *backing_store, FILE *out,
                       unsigned long *g_clock);
-
-/* Escreve as 5 linhas finais de estatisticas no formato do correct.txt. */
-void write_correct_summary(const MemoryManager *mm, FILE *correct_fp);
-
-/* Gera o relatorio final (cabecalho, configuracao, totais e porcentagens)
- * em evidencias.log (modo append) e no terminal (stdout). */
-void write_final_report(const MemoryManager *mm, const char *addr_file,
-                        const char *page_alg_name, const char *tlb_alg_name);
 
 #endif /* TRADU_REGIS_H */

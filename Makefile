@@ -12,7 +12,7 @@ $(TARGET): $(SRCS) $(HDRS)
 	$(CC) $(CFLAGS) $(SRCS) -o $(TARGET) $(LDFLAGS) $(LDLIBS)
 
 clean:
-	rm -f $(TARGET) *.o correct.txt
+	rm -f $(TARGET) *.o
 
 run: $(TARGET)
 	./$(TARGET) addresses.txt lru fifo
