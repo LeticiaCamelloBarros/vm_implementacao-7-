@@ -1,76 +1,102 @@
-
----
-
-💡 **Excelente!** Agora você possui os prompts para todos os 5 componentes modulares do projeto:
-1. **`busca.h` / `busca.c`** (Busca paralela na TLB com `pthreads`)
-2. **`algo.h` / `algo.c`** (Algoritmos puros FIFO e LRU)
-3. **`TLB_ops.h` / `TLB_ops.c`** (Gerenciamento e invalidação da TLB)
-4. **`MF_PD.h` / `MF_PD.c`** (Memória RAM e Paginação por Demanda)
-5. **`tradu_regis.h` / `tradu_regis.c`** (Tradução e geração de estatísticas/logs)
-
-Se quiser que eu monte o prompt do **`main.c` integrando todos esses headers** ou a versão final do **`Makefile`** para compilar todos os arquivos juntos, só avisar!
-escreva um read me que obdeca os criterios de correção
-
-
-Thoughts
-Criei e publiquei a versão atualizada do README-v2.md no seu painel Studio, estruturada de forma a atender a todos os critérios de avaliação e integridade exigidos pelo Guia de Relatórios e pelas especificações da disciplina de Sistemas Operacionais.
-📄 Conteúdo do README-v2.md
 # Simulador de Gerenciador de Memória Virtual em C
 
-**Disciplina:** Infraestrutura de Software / Sistemas Operacionais  
-**Instituição:** CESAR School — Ciência da Computação (3º Período)  
-**Projeto:** Gerenciador de Memória Virtual com Paginação por Demanda e Busca Multithread na TLB  
-**Base Teórica:** *Designing a Virtual Memory Manager* (Silberschatz - 10ª edição)
+**Disciplina:** Infraestrutura de Software — CESAR School
+**Base:** *Designing a Virtual Memory Manager* (Silberschatz et al., *Operating System Concepts*, 10ª ed., p. P-51), com as modificações do enunciado.
 
----
+## O que o programa faz
 
-## 📌 Visão Geral do Projeto
+Traduz endereços lógicos de 16 bits em endereços físicos e lê o byte correspondente.
 
-Este projeto consiste na implementação de um **Gerenciador de Memória Virtual em C** para ambientes Linux/Unix, capaz de realizar a tradução de endereços lógicos (virtuais) de 16 bits em endereços físicos de 16 bits. 
+| Item | Valor |
+| :--- | :--- |
+| Endereço lógico | 16 bits: página = `end >> 8`, deslocamento = `end & 0xFF` |
+| Página / quadro | 256 bytes |
+| Espaço lógico | 256 páginas (64 KB) |
+| Memória física | **128 quadros** (32 KB), preenchidos de 0 a 127 |
+| TLB | **16 entradas**, preenchidas de 0 a 15 |
+| Busca na TLB | **16 `pthreads`**, uma por entrada |
+| Memória secundária | `BACKING_STORE.bin` (lido na pasta onde o programa roda) |
+| Substituição de página | `fifo` ou `lru` |
+| Substituição da TLB | `fifo` ou `lru` |
 
-O sistema simula os principais componentes de uma **MMU (Memory Management Unit)** moderna:
-- **Espaço Lógico:** 256 páginas de 256 bytes (endereços virtuais de 0 a 65535).
-- **Memória Física (RAM):** Limitada a **128 quadros (frames)** de 256 bytes cada (total de 32 KB de RAM).
-- **TLB (Translation Lookaside Buffer):** Cache de tradução com **16 entradas** com suporte a **busca paralela via 16 POSIX Threads (`pthreads`)**.
-- **Paginação por Demanda:** Leitura em bloco do arquivo binário secundário (`BACKING_STORE.bin`) somente quando ocorre *Page Fault*.
-- **Algoritmos de Substituição:** Suporte às políticas **FIFO** (*First-In, First-Out*) e **LRU** (*Least Recently Used*), configuráveis independentemente para a RAM física e para a TLB.
+Regras implementadas:
 
----
+- Com a RAM cheia, o algoritmo escolhe o quadro vítima.
+- Quando uma página sai da RAM, a entrada dela na TLB é invalidada. A posição liberada é a **primeira** preenchida no próximo TLB miss, antes de qualquer FIFO/LRU.
+- No `lru`, todo acesso conta como uso, inclusive o que acerta a TLB.
 
-## 🛠️ Arquitetura e Estrutura de Arquivos
+## Compilar
 
-O projeto adota uma arquitetura modularizada em C99 com separação clara de responsabilidades:
+```bash
+make clean
+make
+```
+
+Gera o executável `vm` na raiz. Requer `gcc` e `pthreads` (Linux, Unix ou macOS).
+
+## Executar
+
+```bash
+./vm <arquivo_enderecos> <fifo|lru> <fifo|lru>
+```
+
+1º argumento: arquivo de endereços (um inteiro de 0 a 65535 por linha). 2º: algoritmo de página. 3º: algoritmo da TLB.
+
+```bash
+./vm addresses.txt lru fifo     # lru na página, fifo na TLB
+```
+
+O `BACKING_STORE.bin` e o arquivo de endereços são fornecidos pelo professor e **não** fazem parte do repositório.
+
+## Saída
+
+Uma linha por endereço, na ordem do arquivo, na **saída padrão**:
+
+```
+Virtual address: 16916 TLB: 0 Physical address: 20 Value: 0
+```
+
+- `TLB` é o **índice (0 a 15) da entrada da TLB** usada: onde a página foi encontrada (hit) ou onde a tradução foi gravada (miss).
+- `Value` é o byte lido (`signed char`, de -128 a 127).
+- Nenhuma estatística, cabeçalho ou mensagem extra é impressa em `stdout`.
+
+## Tratamento de erro
+
+Mensagem em `stderr` e código de saída diferente de zero (1) quando:
+
+- o número de argumentos não é 3;
+- o algoritmo de página ou da TLB não é `fifo` nem `lru`;
+- o arquivo de endereços não existe ou não pode ser aberto;
+- o arquivo tem linha que não é um inteiro de 0 a 65535, linha longa demais ou nenhum endereço;
+- o `BACKING_STORE.bin` não pode ser aberto.
+
+O arquivo de endereços é validado **inteiro antes** da simulação, então nenhuma saída parcial é impressa quando há erro de formatação.
+
+```bash
+./vm; echo $?                              # uso incorreto
+./vm addresses.txt abc lru; echo $?        # algoritmo invalido
+./vm naoexiste.txt lru fifo; echo $?       # arquivo inexistente
+```
+
+## Arquitetura
 
 | Arquivo | Responsabilidade |
 | :--- | :--- |
-| `main.c` | Ponto de entrada (`main`), validação de argumentos CLI, inicialização de estruturas e laço principal de leitura. |
-| `busca.h` / `busca.c` | Módulo de busca multithread na TLB (disparo e sincronização de 16 `pthreads` simultâneas). |
-| `algo.h` / `algo.c` | Módulo de funções puras para os algoritmos de substituição (FIFO e LRU) e despachante genérico. |
-| `TLB_ops.h` / `TLB_ops.c` | Módulo de gerenciamento da TLB (alocação, substituição e invalidação por coerência). |
-| `MF_PD.h` / `MF_PD.c` | Módulo da memória RAM física (32 KB), paginação por demanda (`BACKING_STORE.bin`) e *Page Faults*. |
-| `tradu_regis.h` / `tradu_regis.c` | Módulo de tradução de endereços, montagem do endereço físico e escrita em `correct.txt` / `evidencias.log`. |
-| `Makefile` | Script de compilação automatizada com suporte a `-pthread` e alvos `all`, `clean` e `run`. |
-| `addresses.txt` | Arquivo contendo a lista de endereços virtuais de entrada (1 por linha). |
-| `BACKING_STORE.bin` | Arquivo binário de 64 KB representando o disco rígido / memória secundária. |
-| `correct.txt` | Arquivo de saída gerado com os resultados da tradução e leitura de bytes. |
-| `evidencias.log` | Arquivo de log com o registro completo das estatísticas de execução (*Page Faults*, *TLB Hits*). |
-| `lsncb.docx` | Relatório técnico oficial de desenvolvimento e acompanhamento do trabalho. |
+| `main.c` | Argumentos, validação do arquivo de endereços, inicialização e laço principal. |
+| `tradu_regis.c/.h` | Estado da simulação (`MemoryManager`) e tradução de um endereço, com impressão da linha de saída. |
+| `busca.c/.h` | Busca paralela na TLB: 16 threads, `pthread_create` + `pthread_join`. |
+| `TLB_ops.c/.h` | `update_tlb` (slot livre primeiro, senão vítima FIFO/LRU; retorna o índice) e `invalidate_tlb_page`. |
+| `MF_PD.c/.h` | RAM física, paginação por demanda e tratamento de page fault. |
+| `algo.c/.h` | Seleção de vítima FIFO e LRU, usada pela TLB e pela RAM. |
+| `Makefile` | Alvos `all`, `clean` e `run`. |
 
----
+### Decisões técnicas
 
-## ⚙️ Pré-requisitos e Compilação
+1. **Busca na TLB sem mutex.** Cada thread escreve só na sua própria struct e a TLB é somente lida durante a busca, então não há condição de corrida.
+2. **Algoritmos como funções puras.** `algo.c` recebe só vetores de tempos, então o mesmo código serve para a TLB (16) e para a RAM (128).
+3. **Relógio lógico global.** Cada acesso incrementa um contador usado como instante de chegada (FIFO) e de último uso (LRU).
+4. **Validação prévia do arquivo.** Evita saída parcial em caso de erro de formatação.
 
-### Dependências
-- Compilador C compatível com o padrão C99/C11 (ex.: `gcc`).
-- Biblioteca POSIX Threads (`libpthread`).
-- Sistema Operacional Linux / Unix.
+## Estrutura do repositório
 
-### Comandos de Compilação
-No terminal, execute:
-
-```bash
-# Limpar compilações anteriores
-make clean
-
-# Compilar o projeto completo
-make
+Código-fonte (`*.c`, `*.h`), `Makefile`, `README.md`, relatório `<login>.pdf` e `evidencias.log`.
